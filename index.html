@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>全球钢铁产业分布地图 | SMM Global Steel Industry Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{--navy:#0E2440;--navy2:#15314f;--blue:#1B6CA8;--integrated:#C8362F;--eaf:#E0731B;--rolling:#8A8F98;
+ --dri:#2E9E83;--iron:#1B6CA8;--special:#9B59B6;--cream:#F6F2E9;--cream2:#FBF8F1;--ink:#1d2733;--muted:#6b7785;
+ --line:#e2ddd1;--line2:#d6cfbf;--font:'MiSans','PingFang SC','Microsoft YaHei','Hiragino Sans GB',-apple-system,system-ui,'Segoe UI',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);color:var(--ink);background:var(--cream);overflow:hidden}
+.app{display:flex;flex-direction:column;height:100vh}
+header{background:linear-gradient(100deg,var(--navy),var(--navy2) 60%,#1c3b5e);color:#fff;display:flex;align-items:center;
+ justify-content:space-between;padding:0 20px;height:60px;flex:0 0 60px;box-shadow:0 2px 12px rgba(14,36,64,.25);z-index:1200}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--integrated),#e0564f);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+.title h1{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.title .tag{font-size:9px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);padding:2px 6px;border-radius:4px;font-weight:600}
+.title p{font-size:10px;color:#aebfd2;margin-top:2px}
+.kpis{display:flex;gap:16px;align-items:center}
+.kpi{text-align:right;line-height:1.15}
+.kpi .v{font-size:17px;font-weight:800}
+.kpi .v.red{color:#ff8a82}.kpi .v.orange{color:#ffb074}.kpi .v.green{color:#7fd8be}
+.kpi .l{font-size:9px;color:#9fb2c8;margin-top:1px}
+.kpi-div{width:1px;height:28px;background:rgba(255,255,255,.16)}
+.btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:6px 11px;font-size:11px;cursor:pointer;font-weight:600}
+.btn:hover{background:rgba(255,255,255,.22)}
+.lang-tog{display:flex;border:1px solid rgba(255,255,255,.3);border-radius:7px;overflow:hidden}
+.lang-tog span{padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;color:#aebfd2}
+.lang-tog span.on{background:#fff;color:var(--navy)}
+#builtTag{font-size:9px;color:#9fb2c8;white-space:nowrap}
+#newdata{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:3500;background:var(--navy);color:#fff;
+  border-radius:10px;padding:9px 14px;font-size:12px;box-shadow:0 8px 26px rgba(14,36,64,.4);display:flex;align-items:center;gap:12px}
+#newdata button{background:var(--integrated);color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer}
+#newdata button:hover{background:#b32d27}
+.body{flex:1;display:flex;min-height:0;position:relative}
+.rail{width:256px;flex:0 0 256px;background:var(--cream2);border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:1000}
+.rail-scroll{overflow-y:auto;flex:1;padding:13px}
+.rail-scroll::-webkit-scrollbar,.dash-scroll::-webkit-scrollbar,.pop-body::-webkit-scrollbar{width:7px}
+.rail-scroll::-webkit-scrollbar-thumb,.dash-scroll::-webkit-scrollbar-thumb,.pop-body::-webkit-scrollbar-thumb{background:#cfc7b6;border-radius:4px}
+.sec{margin-bottom:15px}
+.sec h3{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sec h3 .hint{font-size:9px;color:var(--muted);font-weight:500;text-transform:none;letter-spacing:0}
+.layer{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:8px;cursor:pointer;margin-bottom:5px;border:1px solid transparent;transition:.12s;background:#fff}
+.layer:hover{border-color:var(--line2)}
+.layer.off{opacity:.4}
+.layer .dot{width:13px;height:13px;border-radius:50%;flex:0 0 13px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.layer .sq{border-radius:3px}
+.layer .nm{font-size:12px;font-weight:600;flex:1}
+.layer .ct{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.search{width:100%;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;font-size:12px;background:#fff;font-family:inherit}
+.search:focus{outline:none;border-color:var(--blue)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-size:10.5px;padding:4px 9px;border-radius:14px;border:1px solid var(--line2);background:#fff;cursor:pointer;font-weight:600;color:var(--muted)}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip.pc.on{background:var(--blue);border-color:var(--blue)}
+.slider-wrap input{width:100%}
+.slider-val{font-size:10.5px;color:var(--muted);margin-top:3px}
+.region-sel{width:100%;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;font-size:12px;background:#fff;font-family:inherit;cursor:pointer}
+.reset{width:100%;margin-top:2px;padding:7px;border:1px dashed var(--line2);border-radius:8px;background:#fff;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600}
+.reset:hover{color:var(--integrated);border-color:var(--integrated)}
+#map{flex:1;background:#cfdbe0;z-index:1;position:relative}
+.rail,.dash{transition:flex-basis .25s ease,width .25s ease}
+.rail.collapsed{flex-basis:0;width:0;min-width:0;overflow:hidden;border:none}
+.dash.collapsed{flex-basis:0;width:0;min-width:0;overflow:hidden;border:none;box-shadow:none}
+.maptgl{position:absolute;top:50%;transform:translateY(-50%);z-index:1100;width:20px;height:48px;background:#fff;border:1px solid var(--line2);color:var(--navy);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(20,40,70,.18);padding:0}
+.maptgl.l{left:0;border-radius:0 9px 9px 0;border-left:none}
+.maptgl.r{right:0;border-radius:9px 0 0 9px;border-right:none}
+.maptgl:hover{background:var(--cream);color:var(--integrated)}
+.map-tools{position:absolute;top:10px;right:10px;z-index:1100;display:flex;gap:6px}
+.map-tools button{background:#fff;border:1px solid var(--line2);color:var(--navy);border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(20,40,70,.15)}
+.map-tools button:hover{background:var(--cream);color:var(--integrated)}
+.scrim{display:none;position:absolute;inset:0;background:rgba(14,36,64,.35);z-index:1400}
+@media(max-width:980px){
+  .rail,.dash{position:absolute;top:0;bottom:0;z-index:1600;box-shadow:0 0 30px rgba(14,36,64,.3);transition:transform .25s ease}
+  .rail{left:0;width:82vw;max-width:300px;transform:translateX(-102%)}
+  .dash{right:0;width:88vw;max-width:360px;transform:translateX(102%)}
+  body.rail-open .rail{transform:none}
+  body.dash-open .dash{transform:none}
+  body.rail-open .scrim,body.dash-open .scrim{display:block}
+  .rail.collapsed,.dash.collapsed{transform:translateX(-102%)}  /* keep off-canvas default */
+  .dash.collapsed{transform:translateX(102%)}
+  .kpis{gap:10px}.kpi:nth-child(n+3){display:none}  /* trim KPIs on phone */
+  #builtTag{display:none}
+}
+.gate-mask{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),#1c3b5e);z-index:4000;display:flex;align-items:center;justify-content:center}
+.gate-box{background:#fff;border-radius:16px;padding:34px 34px 28px;width:340px;max-width:92%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.gate-logo{width:46px;height:46px;border-radius:11px;background:linear-gradient(135deg,var(--integrated),#e0564f);color:#fff;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.gate-box h2{font-size:17px;font-weight:800;color:var(--navy)}
+.gate-box p{font-size:11px;color:var(--muted);margin:6px 0 16px;line-height:1.5}
+.gate-box input{width:100%;padding:11px 12px;border:1px solid var(--line2);border-radius:9px;font-size:14px;text-align:center;font-family:inherit}
+.gate-box input:focus{outline:none;border-color:var(--blue)}
+#gateErr{color:var(--integrated);font-size:11px;margin-top:8px;font-weight:600}
+.gate-box button{margin-top:14px;width:100%;background:var(--integrated);color:#fff;border:none;border-radius:9px;padding:11px;font-size:14px;font-weight:700;cursor:pointer}
+.gate-box button:hover{background:#b32d27}
+.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(14,36,64,.28);padding:0;overflow:hidden}
+.leaflet-popup-content{margin:0;width:266px!important}
+.pop-cta{margin-top:10px;padding:7px 9px;background:var(--cream);border:1px solid var(--line2);border-radius:8px;font-size:11px;font-weight:700;color:var(--blue);cursor:pointer;text-align:center}
+.pop-cta:hover{background:#eef3f7;border-color:var(--blue)}
+.pop-head{padding:13px 15px 11px;color:#fff;background:linear-gradient(120deg,var(--navy),var(--navy2))}
+.pop-head .pt{font-size:9px;font-weight:700;letter-spacing:.3px;padding:2px 7px;border-radius:10px;display:inline-block;margin-bottom:6px}
+.pop-head h4{font-size:14px;font-weight:700;line-height:1.25}
+.pop-head .loc{font-size:10.5px;color:#aebfd2;margin-top:3px}
+.pop-head .rid{font-size:9px;color:#8aa0bb;margin-top:3px;letter-spacing:.3px}
+.pop-body{padding:6px 15px 14px;background:#fff;max-height:62vh;overflow-y:auto}
+.pop-sec{margin-top:9px}
+.pop-sec .sh{font-size:9.5px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--line);padding-bottom:3px;margin-bottom:4px}
+.pop-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:3.5px 0}
+.pop-row .k{color:var(--muted);flex:0 0 auto}
+.pop-row .v{font-weight:600;text-align:right}
+.pop-prod{margin-top:5px}
+.ptag{display:inline-block;font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:5px;margin:2px 3px 0 0;color:#fff}
+.capbar{height:8px;border-radius:4px;display:flex;overflow:hidden;background:#eee;margin-top:5px}
+.capbar i{height:100%}
+.cap-leg{font-size:9.5px;color:var(--muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:8px}
+.inv-note{margin-top:7px;font-size:10px;color:#9a7b1c;background:#fcf5df;border:1px dashed #e0c869;border-radius:7px;padding:7px 9px;line-height:1.45}
+.src-badge{margin-top:10px;font-size:9px;color:var(--muted);text-align:right}
+.dash{width:360px;flex:0 0 360px;background:var(--cream2);border-left:1px solid var(--line);display:flex;flex-direction:column;z-index:1000;box-shadow:-3px 0 14px rgba(20,40,70,.05)}
+.dash-head{padding:12px 15px 10px;border-bottom:1px solid var(--line);background:#fff}
+.dash-head .t{font-size:13px;font-weight:700;color:var(--navy)}
+.dash-head .scope{font-size:10.5px;color:var(--muted);margin-top:2px}
+.dash-scroll{overflow-y:auto;flex:1;padding:13px}
+.card{background:#fff;border:1px solid var(--line);border-radius:11px;padding:12px;margin-bottom:12px}
+.card .ct{font-size:11.5px;font-weight:700;color:var(--navy);margin-bottom:2px}
+.card .cs{font-size:9.5px;color:var(--muted);margin-bottom:7px}
+.chart{width:100%}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 11px}
+.stat .v{font-size:19px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
+.stat .v small{font-size:11px;font-weight:600;color:var(--muted)}
+.stat .l{font-size:9.5px;color:var(--muted);margin-top:2px}
+.rank-row{display:flex;align-items:center;gap:8px;padding:6px 5px;border-bottom:1px solid var(--line);cursor:pointer;border-radius:6px}
+.rank-row:hover{background:var(--cream)}
+.rank-row .rn{font-size:10px;font-weight:800;color:var(--muted);width:16px;text-align:center}
+.rank-row .rdot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}
+.rank-row .rnm{font-size:11px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-row .rcy{font-size:9px;color:var(--muted)}
+.rank-row .rcap{font-size:11px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
+.ob-mask{position:fixed;inset:0;background:rgba(14,36,64,.65);z-index:3000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);padding:20px}
+.ob{background:#fff;border-radius:16px;max-width:620px;width:100%;max-height:90vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4);display:flex;flex-direction:column}
+.ob-top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;padding:18px 24px;flex:0 0 auto}
+.ob-top h2{font-size:18px;font-weight:800}
+.ob-top p{font-size:12px;color:#aebfd2;margin-top:4px}
+.ob-steps{padding:14px 24px 6px;overflow-y:auto}
+.ob-step{display:flex;gap:13px;padding:10px 0;border-bottom:1px solid var(--line)}
+.ob-step:last-child{border-bottom:none}
+.ob-n{width:26px;height:26px;border-radius:50%;background:var(--integrated);color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex:0 0 26px}
+.ob-step .tx b{font-size:13px}.ob-step .tx p{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.5}
+.ob-foot{padding:12px 24px 18px;display:flex;justify-content:space-between;align-items:center;flex:0 0 auto;border-top:1px solid var(--line)}
+.ob-foot label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
+.ob-go{background:var(--integrated);color:#fff;border:none;border-radius:9px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer}
+.ob-go:hover{background:#b32d27}
+.legend-note{font-size:10px;color:var(--muted);line-height:1.5;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.toggle-eye{font-size:10px;color:var(--blue);cursor:pointer;font-weight:600}
+.backlink{font-size:12px;font-weight:700;color:var(--blue);cursor:pointer}
+.backlink:hover{text-decoration:underline}
+.pp-hero{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:11px;padding:13px 14px;margin-bottom:11px}
+.pp-hero .pt{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;display:inline-block;margin-bottom:6px}
+.pp-hero h3{font-size:15px;font-weight:800;line-height:1.25}
+.pp-hero .ln{font-size:10.5px;color:#aebfd2;margin-top:3px}
+.pp-hero .rid{font-size:9px;color:#8aa0bb;margin-top:4px}
+.pp-mg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:11px}
+.pp-m{background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 10px}
+.pp-m .v{font-size:16px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
+.pp-m .v small{font-size:10px;color:var(--muted);font-weight:600}
+.pp-m .l{font-size:9px;color:var(--muted);margin-top:1px}
+.tl{position:relative;padding-left:16px;margin-top:4px}
+.tl:before{content:"";position:absolute;left:4px;top:4px;bottom:4px;width:2px;background:var(--line2)}
+.tl-node{position:relative;padding:5px 0 7px 4px}
+.tl-node:before{content:"";position:absolute;left:-15px;top:7px;width:9px;height:9px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line2)}
+.tl-node.op:before{background:#2E9E83}.tl-node.con:before{background:#E0731B}.tl-node.ann:before{background:#1B6CA8}.tl-node.ret:before{background:#8A8F98}
+.tl-node .yr{font-size:11.5px;font-weight:800;color:var(--navy)}
+.tl-node .ds{font-size:10.5px;color:var(--muted);margin-top:1px}
+.tl-node .cp{font-weight:700;color:var(--ink)}
+.pp-future{background:#eef7f3;border:1px solid #bfe3d6;border-radius:9px;padding:10px 11px;font-size:11px;color:#1d6b54;line-height:1.5}
+.pp-future b{color:#13533f}
+.furn{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;padding:4px 0;border-bottom:1px dotted var(--line)}
+.furn .fu{font-weight:700;color:var(--navy)}
+.furn .fmid{color:var(--muted);flex:1;text-align:center}
+.pp-tag{display:inline-block;font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:5px;margin:2px 3px 0 0;color:#fff}
+.pp-kv{display:flex;justify-content:space-between;gap:10px;font-size:11px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.pp-kv .k{color:var(--muted)}.pp-kv .v{font-weight:600;text-align:right}
+@media(max-width:1240px){.dash{display:none}}
+@media(max-width:880px){.rail{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo">SMM</div>
+      <div class="title"><h1><span data-i18n="appTitle"></span> <span class="tag" data-i18n="tag"></span></h1><p data-i18n="subtitle"></p></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="v red" id="kCap">–</div><div class="l" data-i18n="kCap"></div></div>
+      <div class="kpi-div"></div>
+      <div class="kpi"><div class="v" id="kPlants">–</div><div class="l" data-i18n="kPlants"></div></div>
+      <div class="kpi-div"></div>
+      <div class="kpi"><div class="v orange" id="kEAF">–</div><div class="l" data-i18n="kEAF"></div></div>
+      <div class="kpi-div"></div>
+      <div class="kpi"><div class="v green" id="kDRI">–</div><div class="l" data-i18n="kDRI"></div></div>
+      <span id="builtTag" title="数据版本时间"></span>
+      <div class="lang-tog"><span id="langZh" class="on">中</span><span id="langEn">EN</span></div>
+      <button class="btn" onclick="showOnboard()" data-i18n="guide"></button>
+    </div>
+  </header>
+  <div class="body">
+    <div class="rail">
+      <div class="rail-scroll">
+        <div class="sec"><h3><span data-i18n="hSearch"></span> <span class="hint" data-i18n="hSearchHint"></span></h3>
+          <input class="search" id="search" data-i18n-ph="phSearch"></div>
+        <div class="sec"><h3><span data-i18n="hPrimary"></span> <span class="hint" data-i18n="hClick"></span></h3>
+          <div class="layer" data-type="integrated"><span class="dot" style="background:var(--integrated)"></span><span class="nm" data-i18n="tIntegrated"></span><span class="ct" id="c-integrated"></span></div>
+          <div class="layer" data-type="eaf"><span class="dot" style="background:var(--eaf)"></span><span class="nm" data-i18n="tEaf"></span><span class="ct" id="c-eaf"></span></div>
+          <div class="layer" data-type="rolling"><span class="dot sq" style="background:var(--rolling)"></span><span class="nm" data-i18n="tRolling"></span><span class="ct" id="c-rolling"></span></div></div>
+        <div class="sec"><h3><span data-i18n="hSecondary"></span> <span class="hint" data-i18n="hChain"></span></h3>
+          <div class="layer" data-type="dri"><span class="dot" style="background:var(--dri)"></span><span class="nm" data-i18n="tDri"></span><span class="ct" id="c-dri"></span></div>
+          <div class="layer" data-type="bf_iron"><span class="dot" style="background:var(--iron)"></span><span class="nm" data-i18n="tBf"></span><span class="ct" id="c-bf_iron"></span></div>
+          <div class="layer" data-type="mine"><span class="dot" style="background:#9C6B2E"></span><span class="nm" data-i18n="tMine"></span><span class="ct" id="c-mine"></span></div></div>
+        <div class="sec"><h3 data-i18n="hStatus"></h3>
+          <div class="chips" id="statusChips">
+            <span class="chip on" data-st="operating" data-i18n="stOperating"></span>
+            <span class="chip" data-st="construction" data-i18n="stConstruction"></span>
+            <span class="chip" data-st="announced" data-i18n="stAnnounced"></span>
+            <span class="chip" data-st="retired" data-i18n="stRetired"></span></div></div>
+        <div class="sec"><h3><span data-i18n="hProducts"></span> <span class="hint" data-i18n="hMulti"></span></h3>
+          <div class="chips" id="pcChips">
+            <span class="chip pc" data-pc="flat" data-i18n="pcFlat"></span>
+            <span class="chip pc" data-pc="long" data-i18n="pcLong"></span>
+            <span class="chip pc" data-pc="tube" data-i18n="pcTube"></span>
+            <span class="chip pc" data-pc="special" data-i18n="pcSpecial"></span></div></div>
+        <div class="sec"><h3 data-i18n="hOwnership"></h3>
+          <div class="chips" id="owChips">
+            <span class="chip on" data-ow="all" data-i18n="owAll"></span>
+            <span class="chip" data-ow="state" data-i18n="owState"></span>
+            <span class="chip" data-ow="private" data-i18n="owPrivate"></span></div></div>
+        <div class="sec"><h3 data-i18n="hGreen"></h3>
+          <div class="chips" id="greenChips"><span class="chip" data-green="1" data-i18n="greenOnly"></span></div></div>
+        <div class="sec"><h3><span data-i18n="hRegion"></span> <span class="hint" data-i18n="hSync"></span></h3>
+          <select class="region-sel" id="regionSel"></select></div>
+        <div class="sec"><h3 data-i18n="hCountry"></h3>
+          <select class="region-sel" id="countrySel"></select></div>
+        <div class="sec"><h3 data-i18n="hCapMin"></h3>
+          <div class="slider-wrap"><input type="range" id="capMin" min="0" max="10" step="0.5" value="0">
+            <div class="slider-val"><span data-i18n="capPre"></span> <b id="capMinV">0</b> <span data-i18n="capPost"></span></div></div></div>
+        <div class="sec"><button class="reset" id="resetBtn" data-i18n="reset"></button></div>
+        <div class="sec"><h3 data-i18n="hLegend"></h3>
+          <div class="legend-note"><span id="legendBody"></span><br><span class="toggle-eye" onclick="toggleCluster()" data-i18n="toggleCl"></span></div></div>
+      </div>
+    </div>
+    <div id="map">
+      <div class="map-tools">
+        <button id="btnCsv" data-i18n="tCsv"></button>
+        <button id="btnPng" data-i18n="tScreenshot"></button>
+        <button id="btnShare" data-i18n="tShare"></button>
+      </div>
+      <button class="maptgl l" id="tglRail" title="收起/展开左栏">‹</button>
+      <button class="maptgl r" id="tglDash" title="收起/展开右侧">›</button>
+    </div>
+    <div class="scrim" id="scrim"></div>
+    <div class="dash">
+      <div class="dash-head">
+        <div id="headOverview"><div class="t" data-i18n="dashTitle"></div><div class="scope" id="dashScope"></div></div>
+        <div id="headPlant" style="display:none"><span class="backlink" id="backBtn">←&nbsp;<span data-i18n="backOverview"></span></span></div>
+      </div>
+      <div class="dash-scroll" id="plantView" style="display:none"></div>
+      <div class="dash-scroll" id="overviewView">
+        <div class="stat-grid" style="margin-bottom:12px">
+          <div class="stat"><div class="v" id="sCap">–</div><div class="l" data-i18n="sCap"></div></div>
+          <div class="stat"><div class="v" id="sPlants">–</div><div class="l" data-i18n="sPlants"></div></div>
+          <div class="stat"><div class="v" id="sPipe">–</div><div class="l" data-i18n="sPipe"></div></div>
+          <div class="stat"><div class="v" id="sH2">–</div><div class="l" data-i18n="sH2"></div></div></div>
+        <div class="card"><div class="ct" data-i18n="rankT"></div><div class="cs" data-i18n="rankS"></div><div id="rankList"></div></div>
+        <div class="card"><div class="ct" data-i18n="cRouteT"></div><div class="cs" data-i18n="cRouteS"></div><div class="chart" id="chRoute" style="height:185px"></div></div>
+        <div class="card"><div class="ct" data-i18n="cRegionT"></div><div class="cs" data-i18n="cRegionS"></div><div class="chart" id="chRegion" style="height:215px"></div></div>
+        <div class="card"><div class="ct" data-i18n="cPipeT"></div><div class="cs" data-i18n="cPipeS"></div><div class="chart" id="chPipe" style="height:180px"></div></div>
+        <div class="card"><div class="ct" data-i18n="cCountryT"></div><div class="cs" data-i18n="cCountryS"></div><div class="chart" id="chCountry" style="height:330px"></div>
+          <div id="covNote" style="font-size:9px;color:var(--muted);line-height:1.5;margin-top:8px;border-top:1px dashed var(--line);padding-top:7px"></div></div>
+        <div class="card"><div class="ct" data-i18n="cDriT"></div><div class="cs" data-i18n="cDriS"></div><div class="chart" id="chDRI" style="height:200px"></div></div>
+        <div class="card"><div class="ct" data-i18n="cTrendT"></div><div class="cs" data-i18n="cTrendS"></div><div class="chart" id="chTrend" style="height:175px"></div></div>
+        <div id="disclaimer" style="font-size:9.5px;color:var(--muted);text-align:center;padding:2px 0 6px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="newdata" style="display:none"><span id="newdataTxt"></span><button onclick="location.reload()" id="newdataBtn"></button></div>
+<div class="ob-mask" id="obMask" style="display:none">
+  <div class="ob">
+    <div class="ob-top"><h2 data-i18n="obTitle"></h2><p data-i18n="obSub"></p></div>
+    <div class="ob-steps" id="obSteps"></div>
+    <div class="ob-foot"><label><input type="checkbox" id="obSkip"> <span data-i18n="obSkipL"></span></label>
+      <button class="ob-go" onclick="hideOnboard()" data-i18n="obGo"></button></div>
+  </div>
+</div>
+<div class="gate-mask" id="gateMask" style="display:none">
+  <div class="gate-box">
+    <div class="gate-logo">SMM</div>
+    <h2>全球钢铁产业分布地图</h2>
+    <p>Global Steel Industry Map · 请输入访问口令 / Enter access code</p>
+    <input id="gateInput" type="password" placeholder="访问口令 / Access code" autocomplete="off">
+    <div id="gateErr" style="display:none">口令错误 / Wrong code</div>
+    <button id="gateBtn">进入 / Enter</button>
+  </div>
+</div>
+<script>
+var DATA = "__FETCH__";
+var GATE = "Smmsteelteam123";
+var BUILT = "2026-08-01T14:46:44Z";
+const T={
+ zh:{appTitle:"全球钢铁产业分布地图",tag:"逐厂版",subtitle:"数据来源：SMM 上海有色网 · 2026-03 更新 · 以粗钢产能为核心",
+  kCap:"在产粗钢产能 (Mt/y)",kPlants:"钢厂数量",kEAF:"电炉(EAF)占比",kDRI:"DRI产能 (Mt/y)",guide:"使用指南",
+  tCsv:"⭳ 导出",tScreenshot:"⃞ 截图",tShare:"🔗 分享",tShareCopied:"链接已复制!",cPipeT:"未来投产管线 (在建+规划)",cPipeS:"按预计投产年份 · 单位 Mt/y",
+  hSearch:"搜索",hSearchHint:"厂名 / 企业 / 国家",phSearch:"输入关键词…",
+  hPrimary:"主图层 · 炼钢产能",hClick:"点击开关",tIntegrated:"长流程钢厂 (BF-BOF)",tEaf:"短流程钢厂 (EAF/IF)",tRolling:"轧钢厂 (仅轧制)",
+  hSecondary:"辅助图层 · 原料端",hChain:"产业链完整度",tDri:"DRI 直接还原铁厂",tBf:"独立炼铁厂 (BF)",tMine:"铁矿矿山 (主要)",pOre:"铁矿产量",secMine:"铁矿信息",
+  hStatus:"项目状态",stOperating:"在产",stConstruction:"在建",stAnnounced:"规划",stRetired:"退出",
+  hProducts:"钢材品种",hMulti:"多选筛选",pcFlat:"板材",pcLong:"长材",pcTube:"管材",pcSpecial:"特钢",
+  hOwnership:"所有制",owAll:"全部",owState:"国有",owPrivate:"民营",
+  hGreen:"低碳冶金",greenOnly:"仅看含氢冶金(H₂-DRI)",
+  hRegion:"区域聚焦",hSync:"联动大屏",allRegions:"全球 (所有区域)",
+  hCountry:"国家聚焦",allCountries:"全部国家",cCountryT:"各国粗钢产能 (Top 20)",cCountryS:"在产口径 · 点击柱可定位该国",
+  covNote:"覆盖说明：本图为<b>逐厂可追踪口径</b>合计约 2,168 Mt（892 座在产炼钢厂）。<br><b>OECD《Steel Outlook 2026》(2026-06) 权威对照：</b>全球装机产能 <b>2,445 Mt</b>；过剩产能 640 Mt(2025)，预计 2028 升至 745 Mt；2028 前计划新增 139 Mt。逐厂口径天然低于国家级总量(差额为未逐厂列示的小型轧/感应炉厂)。",
+  hCapMin:"最小产能门槛 (Mt/y)",capPre:"仅显示 ≥",capPost:"Mt/y",reset:"↺ 重置全部筛选",
+  hLegend:"图例说明",legendBody:"圆形 = 具备炼钢产能的钢厂，圆点大小∝粗钢产能；<br>方形 = 仅有轧钢产能的轧钢厂；<br>绿/蓝 = 原料端（DRI/炼铁）。",toggleCl:"▸ 切换聚合/散点显示",
+  dashTitle:"宏观数据总览大屏",sCap:"在产粗钢产能",sPlants:"钢厂数量(在产)",sPipe:"在建+规划产能",sH2:"含氢冶金项目",
+  rankT:"产能排名 (当前筛选)",rankS:"点击任一行可定位到地图",
+  cRouteT:"炼钢工艺产能结构",cRouteS:"电炉(EAF) vs 高炉-转炉(BF-BOF) vs 感应炉(IF)",
+  cRegionT:"各区域粗钢产能 (Mt/y)",cRegionS:"在产口径 · 按产能升序",
+  cDriT:"全球 DRI 产能分布",cDriS:"直接还原铁 = 绿色低碳冶金的关键原料",
+  cTrendT:"产能投运年代趋势",cTrendS:"按投产年份累计在产粗钢产能",
+  scope:n=>"范围：全球 · 在产口径 · 当前可见 "+n+" 项",scopeR:(r,n)=>"范围："+r+" · 在产口径 · 当前可见 "+n+" 项",
+  rtBOF:"BF-BOF 转炉",rtEAF:"EAF 电炉",rtIF:"IF 感应炉",
+  obTitle:"使用指南 · 全球钢铁产业分布地图",obSub:"一分钟看懂：这张图能查什么、怎么查、每个功能做什么",obSkipL:"不再自动显示",obGo:"开始使用 →",
+  steps:[
+   ["这张图展示什么","全球 1,200+ 座钢铁厂的逐厂分布。以「粗钢产能」为核心：圆形=能炼钢的钢厂(圆越大产能越大)，方形=只做轧制的轧钢厂，绿/蓝=炼铁与直接还原铁(原料端)。颜色代表工艺：红=长流程(高炉-转炉)、橙=短流程(电炉)。"],
+   ["第一步：选图层","左侧栏顶部点「长流程 / 短流程 / 轧钢厂 / DRI / 炼铁厂」即可在地图上显示或隐藏对应类型。先选你关心的类型。"],
+   ["第二步：用筛选缩小范围","往下可按「项目状态(在产/在建/规划/退出)、钢材品种(板材/长材/管材/特钢)、所有制(国有/民营)、是否低碳冶金、最小产能、所属区域」层层筛选。一键「重置全部筛选」可还原。"],
+   ["第三步：点钢厂看完整档案","点地图上任一钢厂，弹窗会分区列出：基本信息、产能构成(各工艺拆分)、近年产量、产品与终端用途、铁矿/焦煤/能源来源、环保认证、投资额等全部已知信息。"],
+   ["第四步：右侧大屏 + 点开钢厂详情","默认显示宏观对比（工艺占比、各区域产能、DRI 分布、投运趋势）与「产能排名榜」。<b>一旦点开某座钢厂，右侧会自动切换为该厂的深度档案</b>：投产进度时间线、未来规划产能与预计投产年份、逐座高炉进度等，点「← 返回总览」切回。"],
+   ["搜索与语言","顶部可中/EN 一键切换；左上角搜索框可直接按厂名、企业或国家定位。数据每日由后台自动更新，保持最新。"]],
+  secOverview:"基本信息",secCapacity:"产能构成",secBF:"高炉明细 (逐座)",secOutput:"近年粗钢产量",secProducts:"产品与终端",secChain:"原料与供应链",secEsg:"可持续与认证",secInvest:"投资",
+  bfMore:"座高炉",bfCol:{vol:"炉容",cap:"产能",yr:"投产"},bfst:{operating:"在产","operatingpre-retirement":"在产(拟退役)",construction:"在建",announced:"规划",retired:"退役",idled:"闲置",mothballed:"封存"},
+  backOverview:"返回总览",tlTitle:"投产进度（图表）",futTitle:"未来产能展望",futLead:"在建 / 规划新增产能",futExp:"最早预计投产",furnCon:"座高炉在建中",expYr:"预计",mFuture:"在建+规划产能",mStart:"投产年份",ppExpand:"含未来扩建",phaseExp:"新增/扩建",
+  tlBuilt:"已投产/在产",tlFuture:"在建/规划",tlExited:"退役/取消",tlCum:"累计产能",tlAxis:"产能 (Mt)",tlList:"分阶段明细",
+  tlOperating:"粗钢产能",tlPlanned:"含规划新增",tlNow:"现在",tlIron:"炼铁产能(逐座高炉)",
+  pOperator:"所属企业",pType:"工厂类型",pStatus:"项目状态",pCapOp:"在产粗钢产能",pCapPipe:"在建/规划产能",pStart:"投运年份",pAge:"厂龄",pWorkforce:"员工规模",pId:"档案编号",pLocalName:"本地名称",
+  pIronCap:"炼铁产能(BF/DRI)",pSinter:"烧结",pCoke:"焦化",pPellet:"球团",
+  pProd:"主要品种",pCatProd:"产品阶段",pEnduser:"终端用途",
+  pOreSrc:"铁矿来源",pCoalSrc:"焦煤来源",pPower:"能源来源",pReductant:"还原剂",
+  pResp:"ResponsibleSteel 认证",pIso14001:"ISO 14001 (环境)",pIso50001:"ISO 50001 (能源)",pH2:"含氢冶金 (H₂-DRI)",
+  yrs:"年",yes:"是",no:"否",notDisc:"未公开",unknown:"未知",
+  invNote:"💰 项目投资额(USD)：<b>待自动管线补充</b> — 基础数据暂未含投资额，由每日新闻+年报抓取并按汇率换算后回填。",
+  srcBadge:"数据来源：SMM",disclaimer:"数据截至 2026-03 · 来源 SMM · 仅供参考",
+  pcat:{flat:"板材",long:"长材",tube:"管材",special:"特钢",semi:"半成品"},
+  tmeta:{integrated:"长流程钢厂 BF-BOF",eaf:"短流程钢厂 EAF/IF",other_steel:"炼钢厂(其他)",pipeline_steel:"规划钢厂",rolling:"轧钢厂(仅轧制)",dri:"DRI 直接还原铁厂",bf_iron:"独立炼铁厂 BF",iron_other:"炼铁厂(其他)",mine:"铁矿矿山"},
+  smap:{operating:"在产",construction:"在建",announced:"规划",retired:"退出",cancelled:"取消",mothballed:"封存","operating pre-retirement":"在产(拟退役)"},
+  reg:{"Africa":"非洲","Asia Pacific":"亚太","Central & South America":"中南美洲","Eurasia":"欧亚(CIS)","Europe":"欧洲","Middle East":"中东","North America":"北美"}},
+ en:{appTitle:"Global Steel Industry Map",tag:"Plant-level",subtitle:"Source: SMM (Shanghai Metals Market) · Updated Mar 2026 · Crude steel capacity at the core",
+  kCap:"Operating crude steel cap. (Mt/y)",kPlants:"Steel plants",kEAF:"EAF share",kDRI:"DRI capacity (Mt/y)",guide:"User guide",
+  tCsv:"⭳ Export",tScreenshot:"⃞ Snapshot",tShare:"🔗 Share",tShareCopied:"Link copied!",cPipeT:"Future capacity pipeline (constr.+announced)",cPipeS:"By expected start year · Mt/y",
+  hSearch:"Search",hSearchHint:"plant / company / country",phSearch:"Search a plant, company or country…",
+  hPrimary:"Primary layer · Steelmaking",hClick:"click to toggle",tIntegrated:"Integrated (BF-BOF)",tEaf:"Electric (EAF/IF)",tRolling:"Rolling mills (rolling only)",
+  hSecondary:"Secondary layer · Raw materials",hChain:"supply-chain depth",tDri:"DRI plants (direct reduced iron)",tBf:"Merchant ironworks (BF)",tMine:"Iron ore mines (major)",pOre:"Ore output",secMine:"Iron ore mine",tMine:"Iron ore mines (major)",pOre:"Iron ore output",secMine:"Iron ore mine",
+  hStatus:"Project status",stOperating:"Operating",stConstruction:"Construction",stAnnounced:"Announced",stRetired:"Retired",
+  hProducts:"Product type",hMulti:"multi-select",pcFlat:"Flat",pcLong:"Long",pcTube:"Tube",pcSpecial:"Special",
+  hOwnership:"Ownership",owAll:"All",owState:"State-owned",owPrivate:"Private",
+  hGreen:"Low-carbon route",greenOnly:"Hydrogen (H₂-DRI) only",
+  hRegion:"Region focus",hSync:"syncs the dashboard",allRegions:"All regions",
+  hCountry:"Country focus",allCountries:"All countries",cCountryT:"Crude steel capacity by country (Top 20)",cCountryS:"Operating basis · click a bar to focus that country",
+  covNote:"Coverage note: this map sums <b>plant-level tracked capacity</b> (~2,168 Mt across 892 operating steel plants). <br><b>OECD Steel Outlook 2026 (Jun 2026) benchmark:</b> global capacity <b>2,445 Mt</b>; excess capacity 640 Mt (2025), rising to 745 Mt by 2028; up to 139 Mt of new capacity planned through 2028. Bottom-up plant tracking runs below the national total (the gap is small rolling/induction mills not listed individually).",
+  hCapMin:"Min. capacity (Mt/y)",capPre:"Show only ≥",capPost:"Mt/y",reset:"↺ Reset all filters",
+  hLegend:"Legend",legendBody:"Circle = plant with steelmaking capacity, size ∝ crude steel capacity;<br>Square = rolling mill (rolling only);<br>Green / blue = raw-material side (DRI / ironmaking).",toggleCl:"▸ Toggle cluster / scatter view",
+  dashTitle:"Market Overview",sCap:"Operating crude steel",sPlants:"Steel plants (op.)",sPipe:"Construction + announced",sH2:"Hydrogen (H₂-DRI) projects",
+  rankT:"Capacity ranking (current filter)",rankS:"Click any row to locate it on the map",
+  cRouteT:"Steelmaking route mix",cRouteS:"EAF vs BF-BOF vs induction (IF)",
+  cRegionT:"Crude steel capacity by region (Mt/y)",cRegionS:"Operating basis · ascending",
+  cDriT:"Global DRI capacity",cDriS:"Direct reduced iron — the key feedstock for green steel",
+  cTrendT:"Capacity by commissioning decade",cTrendS:"Cumulative operating crude steel capacity by start year",
+  scope:n=>"Scope: global · operating basis · "+n+" plants shown",scopeR:(r,n)=>"Scope: "+r+" · operating basis · "+n+" plants shown",
+  rtBOF:"BF-BOF (converter)",rtEAF:"EAF",rtIF:"Induction (IF)",
+  obTitle:"User guide · Global Steel Industry Map",obSub:"One minute to learn what this map shows, how to filter, and what each tool does",obSkipL:"Don't show this automatically",obGo:"Start using it →",
+  steps:[
+   ["What this map shows","1,200+ steel plants worldwide, plant by plant, built around crude steel capacity. Circle = a plant that makes steel (bigger = more capacity); square = a rolling-only mill; green/blue = ironmaking & direct-reduced iron (the raw-material side). Colour = process: red = integrated (blast furnace–converter), orange = electric (EAF)."],
+   ["Step 1 — choose layers","At the top of the left rail, click Integrated / Electric / Rolling / DRI / Ironworks to show or hide each plant type on the map. Start with the types you care about."],
+   ["Step 2 — narrow it down with filters","Below that, filter by project status (operating / construction / announced / retired), product type (flat / long / tube / special), ownership (state / private), low-carbon route, minimum capacity and region. One click on Reset clears everything."],
+   ["Step 3 — click a plant for its full profile","Click any plant to open a profile card with everything known about it: overview, capacity breakdown by process, recent output, products & end-use sectors, iron-ore / coal / power sourcing, certifications and investment."],
+   ["Step 4 — dashboard + plant deep-dive","By default the right panel shows macro charts (process mix, capacity by region, DRI distribution, commissioning trend) and a capacity ranking. <b>The moment you click a plant, the panel switches to that plant's deep-dive</b>: commissioning timeline, future planned capacity with expected start year, furnace-by-furnace progress. Click '← Overview' to switch back."],
+   ["Search & language","Switch 中 / EN at the top; use the search box to jump to a plant, company or country. The dataset is refreshed automatically every day to stay current."]],
+  secOverview:"Overview",secCapacity:"Capacity breakdown",secBF:"Blast furnaces (unit-level)",secOutput:"Recent crude steel output",secProducts:"Products & end-use",secChain:"Raw materials & supply chain",secEsg:"Sustainability & certification",secInvest:"Investment",
+  bfMore:"blast furnaces",bfCol:{vol:"Vol.",cap:"Cap.",yr:"Start"},bfst:{operating:"operating","operatingpre-retirement":"operating (pre-ret.)",construction:"construction",announced:"announced",retired:"retired",idled:"idled",mothballed:"mothballed"},
+  backOverview:"Overview",tlTitle:"Commissioning progress (chart)",futTitle:"Future capacity outlook",futLead:"Capacity under construction / announced",futExp:"earliest expected start",furnCon:"furnace(s) under construction",expYr:"exp.",mFuture:"Pipeline capacity",mStart:"Commissioned",ppExpand:"incl. future expansion",phaseExp:"new / expansion",
+  tlBuilt:"Built / operating",tlFuture:"Construction / announced",tlExited:"Retired / cancelled",tlCum:"Cumulative",tlAxis:"Capacity (Mt)",tlList:"Phase detail",
+  tlOperating:"Crude steel capacity",tlPlanned:"Incl. planned",tlNow:"Now",tlIron:"Ironmaking (by furnace)",
+  pOperator:"Operator",pType:"Plant type",pStatus:"Status",pCapOp:"Operating crude steel",pCapPipe:"Pipeline capacity",pStart:"Commissioned",pAge:"Plant age",pWorkforce:"Workforce",pId:"Record ID",pLocalName:"Local name",
+  pIronCap:"Ironmaking (BF/DRI)",pSinter:"Sinter",pCoke:"Coke",pPellet:"Pellet",
+  pProd:"Main products",pCatProd:"Product stage",pEnduser:"End-use sectors",
+  pOreSrc:"Iron ore source",pCoalSrc:"Met coal source",pPower:"Power source",pReductant:"Reductant",
+  pResp:"ResponsibleSteel cert",pIso14001:"ISO 14001 (env.)",pIso50001:"ISO 50001 (energy)",pH2:"Hydrogen-based (H₂-DRI)",
+  yrs:"yrs",yes:"Yes",no:"No",notDisc:"Not disclosed",unknown:"n/a",
+  invNote:"💰 Project investment (USD): <b>pending automated pipeline</b> — not yet in the base dataset; backfilled daily from news and annual reports, FX-converted to USD.",
+  srcBadge:"Source: SMM",disclaimer:"Data as of Mar 2026 · SMM · for reference only",
+  pcat:{flat:"Flat",long:"Long",tube:"Tube",special:"Special",semi:"Semi-finished"},
+  tmeta:{integrated:"Integrated (BF-BOF)",eaf:"Electric (EAF/IF)",other_steel:"Steel (other)",pipeline_steel:"Planned steel plant",rolling:"Rolling mill (rolling only)",dri:"DRI plant",bf_iron:"Merchant ironworks (BF)",iron_other:"Ironworks (other)",mine:"Iron ore mine"},
+  smap:{operating:"Operating",construction:"Construction",announced:"Announced",retired:"Retired",cancelled:"Cancelled",mothballed:"Mothballed","operating pre-retirement":"Operating (pre-retirement)"},
+  reg:{}}
+};
+
+const TYPE_C={integrated:"#C8362F",eaf:"#E0731B",other_steel:"#E0731B",pipeline_steel:"#E0731B",rolling:"#8A8F98",dri:"#2E9E83",bf_iron:"#1B6CA8",iron_other:"#1B6CA8",mine:"#9C6B2E"};
+const PCAT_C={flat:"#1B6CA8",long:"#E0731B",tube:"#2E9E83",special:"#9B59B6",semi:"#8A8F98"};
+function groupOf(t){ if(t==="integrated")return "integrated"; if(["eaf","other_steel","pipeline_steel"].includes(t))return "eaf"; if(t==="rolling")return "rolling"; if(t==="dri")return "dri"; if(t==="mine")return "mine"; return "bf_iron"; }
+const state={lang:"zh",layers:{integrated:1,eaf:1,rolling:1,dri:1,bf_iron:1,mine:1},status:{operating:1},pcats:new Set(),ow:"all",green:0,region:"ALL",country:"ALL",capMin:0,q:"",cluster:true,selected:null};
+function L_(){return T[state.lang];}
+function rName(rg){return (L_().reg[rg]||rg);}
+function metaLabel(t){return L_().tmeta[t]||L_().tmeta.eaf;}
+function stLabel(s){return L_().smap[s]||s;}
+
+const map=L.map('map',{worldCopyJump:true,minZoom:2,maxZoom:11}).setView([28,18],3);
+// 无地名标注底图(避免多语言混排),地名信息由我们的标记/弹窗/筛选提供(纯中/英)
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO · Data: SMM',subdomains:'abcd',maxZoom:19,crossOrigin:true}).addTo(map);
+let cluster=L.markerClusterGroup({maxClusterRadius:42,chunkedLoading:true,iconCreateFunction:c=>{const n=c.getChildCount();const s=n<20?32:n<100?40:48;
+  return L.divIcon({html:'<div style="background:rgba(14,36,64,.82);color:#fff;border-radius:50%;width:'+s+'px;height:'+s+'px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)">'+n+'</div>',className:'',iconSize:[s,s]});}});
+let plainGroup=L.layerGroup();
+function radius(c){return Math.max(4,Math.min(26,3.4*Math.sqrt((c||0.05))));}
+function statusKey(st){return st.startsWith("operating")?"operating":st==="construction"?"construction":st==="announced"?"announced":(["retired","cancelled","mothballed"].includes(st)||st.includes("retire"))?"retired":"operating";}
+function visible(p){
+  if(!state.layers[groupOf(p.type)])return false;
+  if(!state.status[statusKey(p.status)])return false;
+  if(state.region!=="ALL"&&p.rg!==state.region)return false;
+  if(state.country!=="ALL"&&p.cy!==state.country)return false;
+  if(state.pcats.size&&!(p.pcats||[]).some(c=>state.pcats.has(c)))return false;
+  if(state.ow==="state"&&!(p.soe==="Full"||p.soe==="Partial"))return false;
+  if(state.ow==="private"&&(p.soe==="Full"||p.soe==="Partial"))return false;
+  if(state.green&&!p.h2)return false;
+  const cap=p.cap_op||p.cap_pipe||p.iron_op||p.ore||0;
+  if(cap<state.capMin)return false;
+  if(state.q){const q=state.q.toLowerCase();
+    if(!((p.en||"").toLowerCase().includes(q)||(p.nm||"").toLowerCase().includes(q)||(p.owner||"").toLowerCase().includes(q)||(p.cy||"").toLowerCase().includes(q)))return false;}
+  return true;
+}
+function makeMarker(p){
+  const c=TYPE_C[p.type]||TYPE_C.eaf; const cap=p.cap_op||p.cap_pipe||p.iron_op||p.ore||0; const r=radius(cap); let mk;
+  if(p.type==="mine"){const s=Math.max(10,r*1.4);
+    mk=L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',iconSize:[s,s],html:'<div style="width:'+s+'px;height:'+s+'px;background:'+c+';border:1.5px solid #fff;transform:rotate(45deg);opacity:.92;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>'})});
+  }else if(p.type==="rolling"){const s=Math.max(8,r*1.4);
+    mk=L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',iconSize:[s,s],html:'<div style="width:'+s+'px;height:'+s+'px;background:'+c+';border:1.5px solid #fff;border-radius:3px;opacity:.9;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>'})});
+  }else{ mk=L.circleMarker([p.lat,p.lng],{radius:r,fillColor:c,color:"#fff",weight:1.2,opacity:1,fillOpacity:.82}); }
+  mk.bindPopup(()=>popupHTML(p),{maxWidth:290}); mk.on('click',()=>showPlantPanel(p)); return mk;
+}
+function row(k,v){ return v?'<div class="pop-row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>':""; }
+function clip(s,n){ if(!s)return s; s=String(s).replace(/\s*\(P\d+\)/g,'').split(/[;(]/)[0].trim(); if(s.length>n)s=s.slice(0,n).replace(/\s+\S*$/,'')+'…'; return s; }
+function popupHTML(p){
+  // 紧凑"速览卡"：只放核心信息，完整档案在右侧面板，避免两侧高度重合
+  const L=L_(); const c=TYPE_C[p.type]||TYPE_C.eaf;
+  if(p.type==="mine"){
+    return '<div><div class="pop-head" style="background:linear-gradient(120deg,#7a4f1e,#9C6B2E)"><span class="pt" style="background:#5e3c14">'+metaLabel(p.type)+'</span>'+
+      '<h4>'+(p.en||p.nm)+'</h4><div class="loc">'+[p.muni,p.cy].filter(Boolean).join(" · ")+' · '+rName(p.rg)+'</div></div>'+
+      '<div class="pop-body" style="max-height:none;padding-top:10px">'+
+        row(L.pOperator,(p.owner||"—"))+
+        row(L.pStatus,'<span style="color:#9C6B2E">'+stLabel(p.status)+'</span>')+
+        row(L.pOre,(p.ore?"~"+p.ore+" Mt/y":"—"))+
+        '<div class="src-badge">'+L.srcBadge+' · '+p.id+'</div>'+
+      '</div></div>';
+  }
+  const tags=(p.pcats||[]).map(k=>'<span class="ptag" style="background:'+(PCAT_C[k]||"#888")+'">'+L.pcat[k]+'</span>').join("");
+  const capLine=p.cap_op>0?p.cap_op.toFixed(2)+" Mt/y":p.cap_pipe>0?p.cap_pipe.toFixed(2)+" Mt/y ("+stLabel("construction")+")":p.iron_op>0?(state.lang==="zh"?"炼铁 ":"Iron ")+p.iron_op.toFixed(2)+" Mt/y":"—";
+  const localName=(p.nm&&p.nm!==p.en)?'<div class="loc" style="color:#cdd9e6">'+p.nm+'</div>':"";
+  const cta=(state.lang==="zh"?"完整档案见右侧面板 →":"Full profile in the right panel →");
+  return '<div><div class="pop-head"><span class="pt" style="background:'+c+'">'+metaLabel(p.type)+'</span>'+
+    '<h4>'+(p.en||p.nm)+'</h4>'+localName+
+    '<div class="loc">'+[p.muni,p.cy].filter(Boolean).join(" · ")+' · '+rName(p.rg)+'</div></div>'+
+    '<div class="pop-body" style="max-height:none;padding-top:10px">'+
+      row(L.pOperator,(p.owner||"").replace(/\[.*?\]/g,'').trim()||"—")+
+      row(L.pStatus,'<span style="color:'+c+'">'+stLabel(p.status)+'</span>')+
+      row(L.pCapOp,capLine)+
+      (tags?'<div class="pop-prod">'+tags+'</div>':"")+
+      '<div class="pop-cta" onclick="showPlantPanel(DATA.find(function(x){return x.id===\''+p.id+'\'}))">'+cta+'</div>'+
+      '<div class="src-badge">'+L.srcBadge+' · '+p.id+'</div>'+
+    '</div></div>';
+}
+function render(){
+  cluster.clearLayers(); plainGroup.clearLayers();
+  const vis=DATA.filter(visible); const batch=[];
+  vis.forEach(p=>batch.push(makeMarker(p)));
+  if(state.cluster){cluster.addLayers(batch); if(!map.hasLayer(cluster))map.addLayer(cluster); if(map.hasLayer(plainGroup))map.removeLayer(plainGroup);}
+  else{batch.forEach(b=>plainGroup.addLayer(b)); if(!map.hasLayer(plainGroup))map.addLayer(plainGroup); if(map.hasLayer(cluster))map.removeLayer(cluster);}
+  updateDash(vis); updateRank(vis);
+}
+function toggleCluster(){state.cluster=!state.cluster;render();}
+function flyTo(p){ map.setView([p.lat,p.lng],7); L.popup({maxWidth:360}).setLatLng([p.lat,p.lng]).setContent(popupHTML(p)).openOn(map); showPlantPanel(p); }
+
+// ---- right-panel deep-dive on a single plant ----
+function statusCls(st){const s=(st||'').replace(/\s/g,''); if(s.startsWith('operating')||s.startsWith('mothballed'))return 'op'; if(s==='construction')return 'con'; if(s==='announced')return 'ann'; return 'ret';}
+function projDates(p){const L=L_();const z=state.lang==='zh';const it=[];
+  if(p.announced)it.push((z?'公告 ':'Announced ')+p.announced);
+  if(p.constr)it.push((z?'开工 ':'Construction ')+p.constr);
+  if(p.idled)it.push((z?'闲置 ':'Idled ')+p.idled);
+  if(p.retired)it.push((z?'退役 ':'Retired ')+p.retired);
+  var ret=(p.cap_ret>0)?'<div style="font-size:10px;color:#b0453f;margin-top:5px"><b>'+(z?'累计已退役产能':'Retired capacity to date')+'：'+p.cap_ret.toFixed(2)+' Mt/y</b></div>':'';
+  return (it.length?'<div style="font-size:9.5px;color:var(--muted);margin-top:7px;border-top:1px dashed var(--line);padding-top:6px">'+it.join(' · ')+'</div>':'')+ret;}
+function buildPlantPanel(p){
+  const L=L_(); const c=TYPE_C[p.type]||TYPE_C.eaf; const z=state.lang==='zh';
+  if(p.type==="mine"){
+    return '<div class="pp-hero" style="background:linear-gradient(120deg,#7a4f1e,#9C6B2E)"><span class="pt" style="background:#5e3c14">'+metaLabel(p.type)+'</span>'+
+      '<h3>'+(p.en||p.nm)+'</h3><div class="ln">'+[p.muni,p.cy].filter(Boolean).join(' · ')+' · '+rName(p.rg)+'</div>'+
+      '<div class="rid">'+L.srcBadge+' · '+p.id+' · '+stLabel(p.status)+'</div></div>'+
+      '<div class="pp-mg"><div class="pp-m"><div class="v">'+(p.ore?p.ore:'—')+'<small> Mt/y</small></div><div class="l">'+L.pOre+'</div></div>'+
+      '<div class="pp-m"><div class="v" style="font-size:13px">'+stLabel(p.status)+'</div><div class="l">'+L.pStatus+'</div></div></div>'+
+      '<div class="card"><div class="ct">'+L.secMine+'</div>'+
+        '<div class="pp-kv"><span class="k">'+L.pOperator+'</span><span class="v">'+(p.owner||'—')+'</span></div>'+
+        '<div class="pp-kv"><span class="k">'+(z?'国家/地区':'Country / region')+'</span><span class="v">'+p.cy+' · '+rName(p.rg)+'</span></div>'+
+        '<div class="pp-kv"><span class="k">'+L.pOre+'</span><span class="v">'+(p.ore?'~'+p.ore+' Mt/y':'—')+'</span></div>'+
+      '</div><div style="font-size:9.5px;color:var(--muted);text-align:center;padding:2px 0 8px">'+L.disclaimer+'</div>';
+  }
+  let h='<div class="pp-hero"><span class="pt" style="background:'+c+'">'+metaLabel(p.type)+'</span>'+
+    '<h3>'+(p.en||p.nm)+'</h3>'+((p.nm&&p.nm!==p.en)?'<div class="ln">'+p.nm+'</div>':'')+
+    '<div class="ln">'+[p.muni,p.sub,p.cy].filter(Boolean).join(' · ')+' · '+rName(p.rg)+'</div>'+
+    '<div class="rid">'+L.srcBadge+' · '+p.id+' · '+stLabel(p.status)+'</div></div>';
+  const ironCap=(p.bf||0)+(p.dri||0);
+  h+='<div class="pp-mg">'+
+    '<div class="pp-m"><div class="v">'+(p.cap_op||0).toFixed(2)+'<small> Mt/y</small></div><div class="l">'+L.pCapOp+'</div></div>'+
+    '<div class="pp-m"><div class="v">'+(ironCap>0?ironCap.toFixed(2)+'<small> Mt/y</small>':'—')+'</div><div class="l">'+L.pIronCap+'</div></div>'+
+    '<div class="pp-m"><div class="v" style="color:'+(p.cap_pipe>0?'#E0731B':'var(--navy)')+'">'+(p.cap_pipe>0?'+'+p.cap_pipe.toFixed(2)+'<small> Mt/y</small>':'—')+'</div><div class="l">'+L.mFuture+'</div></div>'+
+    '<div class="pp-m"><div class="v">'+(p.start||'—')+(p.age?'<small> · '+p.age+L.yrs+'</small>':'')+'</div><div class="l">'+L.mStart+'</div></div></div>';
+  if(p.cap_pipe>0){
+    const fut=(p.phases||[]).filter(x=>['construction','announced'].includes((x.st||'').trim())&&x.yr);
+    const exp=fut.length?Math.min.apply(null,fut.map(x=>x.yr)):null;
+    const con=(p.bf_units||[]).filter(u=>(u.st||'').replace(/\s/g,'').startsWith('construction'));
+    h+='<div class="card"><div class="ct">'+L.futTitle+'</div><div class="pp-future"><b>'+L.futLead+'：+'+p.cap_pipe.toFixed(2)+' Mt/y</b>'+
+      (exp?'<br>'+L.futExp+'：<b>'+exp+'</b>':'')+(con.length?'<br>'+con.length+' '+L.furnCon:'')+'</div></div>';
+  }
+  const phs=(p.phases||[]).filter(x=>x.cap>0||x.iron>0);
+  if(phs.length){
+    const hasYear=phs.some(x=>x.yr)||!isNaN(parseInt(p.start));
+    const nodes=phs.map(x=>{const cls=statusCls(x.st);const pipe=['construction','announced'].includes((x.st||'').trim());
+      const cap=x.cap>0?x.cap.toFixed(2)+' Mt':(x.iron>0?L.pIron+' '+x.iron.toFixed(2)+' Mt':'');
+      const yr=x.yr?(pipe?x.yr+' ('+L.expYr+')':x.yr):'—';
+      return '<div class="tl-node '+cls+'"><div class="yr">'+yr+'</div><div class="ds">'+stLabel(x.st)+' · <span class="cp">'+cap+'</span></div></div>';}).join('');
+    h+='<div class="card"><div class="ct">'+L.tlTitle+'</div>'+
+      (hasYear?'<div id="ppTL" style="height:178px;margin:2px 0 6px"></div>':'')+
+      '<div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin:2px 0 2px">'+L.tlList+'</div>'+
+      '<div class="tl">'+nodes+'</div>'+projDates(p)+'</div>';
+  }
+  const parts=[[L.rtBOF,p.bof,"#C8362F"],[L.rtEAF,p.eaf,"#E0731B"],[L.rtIF,p.iff,"#C99A14"]].filter(x=>x[1]>0);
+  if(parts.length){const tot=parts.reduce((a,x)=>a+x[1],0)||1;
+    h+='<div class="card"><div class="ct">'+L.secCapacity+'</div><div class="capbar">'+parts.map(x=>'<i style="width:'+(x[1]/tot*100)+'%;background:'+x[2]+'"></i>').join('')+'</div><div class="cap-leg">'+parts.map(x=>'<span><b style="color:'+x[2]+'">●</b> '+x[0]+' '+x[1].toFixed(2)+'Mt</span>').join('')+'</div></div>';}
+  if(p.bf_units&&p.bf_units.length){
+    const rows=p.bf_units.map(u=>{const k=(u.st||'').replace(/\s/g,'');const con=k.startsWith('construction');const on=k.startsWith('operating');
+      const bits=[u.m3?u.m3.toLocaleString()+'m³':'',u.cap?u.cap.toFixed(2)+'Mt':'',u.yr?(con?u.yr+'('+L.expYr+')':u.yr):''].filter(Boolean).join(' · ');
+      return '<div class="furn"><span class="fu">'+(u.un||'BF')+'</span><span class="fmid">'+bits+'</span><span style="color:'+(on?'#2E9E83':con?'#E0731B':'#888')+';font-weight:600">'+(L.bfst[k]||u.st)+'</span></div>';}).join('');
+    h+='<div class="card"><div class="ct">'+L.secBF+' · '+p.bf_units.length+' '+L.bfMore+'</div>'+rows+'</div>';
+  }
+  if(p.prod){const ys=Object.keys(p.prod).sort().reverse();
+    h+='<div class="card"><div class="ct">'+L.secOutput+'</div>'+ys.map(y=>'<div class="pp-kv"><span class="k">'+y+'</span><span class="v">'+p.prod[y].toFixed(2)+' Mt</span></div>').join('')+'</div>';}
+  const tags=(p.pcats||[]).map(k=>'<span class="pp-tag" style="background:'+(PCAT_C[k]||"#888")+'">'+L.pcat[k]+'</span>').join('');
+  if(tags||p.enduser||p.cat_prod){h+='<div class="card"><div class="ct">'+L.secProducts+'</div>'+(tags?'<div style="margin-bottom:5px">'+tags+'</div>':'')+
+     (p.cat_prod?'<div class="pp-kv"><span class="k">'+L.pCatProd+'</span><span class="v">'+p.cat_prod+'</span></div>':'')+
+     (p.enduser?'<div class="pp-kv"><span class="k">'+L.pEnduser+'</span><span class="v">'+p.enduser+'</span></div>':'')+'</div>';}
+  if(p.ore_src||p.coal_src||p.reductant){h+='<div class="card"><div class="ct">'+L.secChain+'</div>'+
+     (p.ore_src?'<div class="pp-kv"><span class="k">'+L.pOreSrc+'</span><span class="v">'+clip(p.ore_src,56)+'</span></div>':'')+
+     (p.coal_src?'<div class="pp-kv"><span class="k">'+L.pCoalSrc+'</span><span class="v">'+clip(p.coal_src,56)+'</span></div>':'')+
+     (p.reductant?'<div class="pp-kv"><span class="k">'+L.pReductant+'</span><span class="v">'+p.reductant.join(', ')+'</span></div>':'')+'</div>';}
+  if((p.respsteel&&p.respsteel!=='no')||p.iso14001||p.iso50001||p.h2){h+='<div class="card"><div class="ct">'+L.secEsg+'</div>'+
+     (p.h2?'<div class="pp-kv"><span class="k">'+L.pH2+'</span><span class="v" style="color:#2E9E83">'+L.yes+'</span></div>':'')+
+     ((p.respsteel&&p.respsteel!=='no')?'<div class="pp-kv"><span class="k">'+L.pResp+'</span><span class="v">'+p.respsteel+'</span></div>':'')+
+     (p.iso14001?'<div class="pp-kv"><span class="k">'+L.pIso14001+'</span><span class="v">'+p.iso14001+'</span></div>':'')+
+     (p.iso50001?'<div class="pp-kv"><span class="k">'+L.pIso50001+'</span><span class="v">'+p.iso50001+'</span></div>':'')+'</div>';}
+  h+='<div class="card"><div class="ct">'+L.secInvest+'</div>'+
+     (p.workforce?'<div class="pp-kv"><span class="k">'+L.pWorkforce+'</span><span class="v">'+((+p.workforce).toLocaleString?(+p.workforce).toLocaleString():p.workforce)+'</span></div>':'')+
+     (p.inv_usd?'<div class="pp-kv"><span class="k">'+(z?'投资额':'Investment')+'</span><span class="v">≈ $'+p.inv_usd+'M USD</span></div>':'<div class="inv-note">'+L.invNote+'</div>')+'</div>';
+  h+='<div style="font-size:9.5px;color:var(--muted);text-align:center;padding:2px 0 8px">'+L.disclaimer+'</div>';
+  return h;
+}
+let ppChart=null;
+function renderTimelineChart(p){
+  const el=document.getElementById('ppTL'); if(!el)return;
+  if(ppChart){try{ppChart.dispose();}catch(e){} ppChart=null;}
+  const L=L_(); const NOW=2026;
+  const clsOf=st=>['retired','cancelled'].includes(st)?'ex':(['construction','announced'].includes(st)?'fut':'built');
+  // ---- crude steel additions (from phases) ----
+  const yrOf=x=>{ if(x.yr)return x.yr; const s=parseInt(p.start); return isNaN(s)?null:s; };
+  let crude=(p.phases||[]).filter(x=>x.cap>0)
+    .map(x=>({yr:yrOf(x),val:+x.cap.toFixed(2),c:clsOf((x.st||'').trim())})).filter(x=>x.yr&&x.c!=='ex');
+  if(!crude.length){ const s=parseInt(p.start); if(!isNaN(s)&&p.cap_op>0)crude=[{yr:s,val:+p.cap_op.toFixed(2),c:'built'}]; }
+  // ---- ironmaking additions (from per-furnace start years) — shows real multi-decade build-up ----
+  const iron=(p.bf_units||[]).filter(u=>u.yr&&u.cap>0)
+    .map(u=>{const k=(u.st||'').replace(/\s/g,''); return {yr:u.yr,val:+u.cap.toFixed(2),c:k.startsWith('construction')||k.startsWith('announced')?'fut':(k.startsWith('retired')||k.startsWith('idled')?'ex':'built')};})
+    .filter(x=>x.c!=='ex');
+  const allYrs=crude.concat(iron).map(x=>x.yr);
+  if(!allYrs.length)return;
+  const start=Math.min.apply(null,allYrs), endFut=Math.max(NOW,Math.max.apply(null,allYrs));
+  const span=endFut-start; const step=span<=16?2:(span<=40?5:10);
+  const yrs=[]; for(let y=start;y<=endFut;y++)yrs.push(y);
+  const cum=(arr,y,kinds)=>arr.filter(x=>x.yr<=y&&kinds.indexOf(x.c)>=0).reduce((a,x)=>a+x.val,0);
+  const crudeBuilt=crude.filter(x=>x.c==='built'), crudeFut=crude.filter(x=>x.c==='fut');
+  const grad=(c1,c2)=>new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:c1},{offset:1,color:c2}]);
+  const series=[]; const legend=[]; let maxV=0;
+  // crude steel line (green area)
+  if(crude.length){ const d=yrs.map(y=>[y,+cum(crude,y,['built']).toFixed(2)]);
+    maxV=Math.max(maxV,...d.map(x=>x[1])); legend.push(L.tlOperating);
+    series.push({name:L.tlOperating,type:'line',data:d,step:'end',symbol:'circle',symbolSize:4,showSymbol:crude.length>1,
+      areaStyle:{color:grad('rgba(46,158,131,.28)','rgba(46,158,131,.02)')},lineStyle:{color:'#2E9E83',width:2.6},itemStyle:{color:'#2E9E83'},
+      endLabel:{show:true,formatter:o=>o.value[1]+' Mt',fontSize:10,fontWeight:'bold',color:'#1d6b54'},
+      markLine:{silent:true,symbol:'none',label:{formatter:L.tlNow,fontSize:9,color:'#fff',position:'insideEndTop',backgroundColor:'#9aa3ad',padding:[2,4],borderRadius:3},lineStyle:{type:'dashed',color:'#c2c7cd',width:1.5},data:[{xAxis:NOW}]}});
+  }
+  // ironmaking line from furnaces (blue, with markers at each furnace)
+  if(iron.length>1){ const d=yrs.map(y=>[y,+cum(iron,y,['built','fut']).toFixed(2)]);
+    maxV=Math.max(maxV,...d.map(x=>x[1])); legend.push(L.tlIron);
+    series.push({name:L.tlIron,type:'line',data:d,step:'end',symbol:'circle',symbolSize:5,
+      lineStyle:{color:'#1B6CA8',width:2},itemStyle:{color:'#1B6CA8'},
+      endLabel:{show:true,formatter:o=>o.value[1]+' Mt',fontSize:9,fontWeight:'bold',color:'#134e7a'}});
+  }
+  // planned crude (dashed orange)
+  if(crudeFut.length){ const minF=Math.min.apply(null,crudeFut.map(x=>x.yr));
+    const base=cum(crude,NOW,['built']); const d=yrs.map(y=>y>=minF?[y,+(base+cum(crudeFut,y,['fut'])).toFixed(2)]:[y,null]);
+    maxV=Math.max(maxV,...d.filter(x=>x[1]!=null).map(x=>x[1])); legend.push(L.tlPlanned);
+    series.push({name:L.tlPlanned,type:'line',data:d,step:'end',symbol:'circle',symbolSize:5,connectNulls:false,
+      lineStyle:{color:'#E0731B',width:2,type:'dashed'},itemStyle:{color:'#E0731B'},areaStyle:{color:grad('rgba(224,115,27,.16)','rgba(224,115,27,.01)')}});
+  }
+  if(!series.length)return;
+  ppChart=echarts.init(el);
+  ppChart.setOption({
+    grid:{left:2,right:44,top:28,bottom:16,containLabel:true},
+    legend:{top:0,left:0,itemWidth:14,itemHeight:8,itemGap:10,textStyle:{fontSize:9,color:'#6b7785'},data:legend},
+    tooltip:{trigger:'axis',backgroundColor:'rgba(14,36,64,.92)',borderWidth:0,textStyle:{fontSize:11,color:'#fff'},
+      formatter:ps=>{let s='<b>'+Math.round(ps[0].axisValue)+'</b><br>';ps.forEach(x=>{const v=x.value&&x.value[1]; if(v!=null)s+=x.marker+x.seriesName+': '+v+' Mt<br>';});return s;}},
+    xAxis:{type:'value',min:start,max:endFut,interval:step,boundaryGap:false,
+      axisLabel:{fontSize:9,color:'#9aa3ad',formatter:v=>Math.round(v)},axisTick:{show:false},axisLine:{lineStyle:{color:'#e2ddd1'}},splitLine:{show:false}},
+    yAxis:{type:'value',name:L.tlAxis,nameTextStyle:{fontSize:9,color:'#b3b9c0',align:'left'},nameGap:8,
+      min:0,max:Math.max(1,Math.ceil(maxV*1.15)),splitNumber:3,
+      axisLabel:{fontSize:9,color:'#9aa3ad'},axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{type:'dashed',color:'#eef0f2'}}},
+    series:series});
+}
+function paintPanel(p){
+  const pv=document.getElementById('plantView'); pv.innerHTML=buildPlantPanel(p);
+  renderTimelineChart(p);
+}
+function showPlantPanel(p){ state.selected=p;
+  document.getElementById('plantView').style.display='block';
+  document.getElementById('overviewView').style.display='none';
+  document.getElementById('headOverview').style.display='none';
+  document.getElementById('headPlant').style.display='block';
+  paintPanel(p); document.getElementById('plantView').scrollTop=0;
+}
+function backToOverview(){ state.selected=null;
+  if(ppChart){try{ppChart.dispose();}catch(e){} ppChart=null;}
+  document.getElementById('plantView').style.display='none';
+  document.getElementById('overviewView').style.display='block';
+  document.getElementById('headOverview').style.display='block';
+  document.getElementById('headPlant').style.display='none';
+}
+
+let charts={};
+function E(id){if(!charts[id])charts[id]=echarts.init(document.getElementById(id));return charts[id];}
+function updateRank(vis){
+  const L=L_(); const top=vis.filter(p=>(p.cap_op||p.cap_pipe||p.iron_op)>0)
+    .sort((a,b)=>(b.cap_op||b.cap_pipe||b.iron_op)-(a.cap_op||a.cap_pipe||a.iron_op)).slice(0,15);
+  const el=document.getElementById('rankList');
+  el.innerHTML=top.map((p,i)=>{const cap=(p.cap_op||p.cap_pipe||p.iron_op);
+    return '<div class="rank-row" data-id="'+p.id+'"><span class="rn">'+(i+1)+'</span>'+
+      '<span class="rdot" style="background:'+(TYPE_C[p.type]||"#888")+'"></span>'+
+      '<span class="rnm">'+(p.en||p.nm)+'<div class="rcy">'+(p.cy||"")+'</div></span>'+
+      '<span class="rcap">'+cap.toFixed(1)+'</span></div>';}).join("")||('<div style="font-size:11px;color:var(--muted);padding:8px 2px">'+(state.lang==="zh"?"当前筛选无结果":"No plants match the current filter")+'</div>');
+  el.querySelectorAll('.rank-row').forEach(rw=>rw.addEventListener('click',()=>{const p=DATA.find(x=>x.id===rw.dataset.id); if(p)flyTo(p);}));
+}
+function updateDash(vis){
+  const L=L_();
+  const scopeData=DATA.filter(p=>(state.region==="ALL"||p.rg===state.region)&&(state.country==="ALL"||p.cy===state.country));
+  const op=scopeData.filter(p=>p.status.startsWith("operating"));
+  const sumBOF=op.reduce((a,p)=>a+p.bof,0),sumEAF=op.reduce((a,p)=>a+p.eaf,0),sumIF=op.reduce((a,p)=>a+p.iff,0);
+  const sumCrude=op.reduce((a,p)=>a+p.cap_op,0);
+  const pipe=scopeData.filter(p=>["construction","announced"].includes(p.status)).reduce((a,p)=>a+p.cap_pipe,0);
+  const steelPlants=op.filter(p=>p.cap_op>0).length; const h2=scopeData.filter(p=>p.h2).length;
+  document.getElementById('sCap').innerHTML=Math.round(sumCrude)+'<small> Mt</small>';
+  document.getElementById('sPlants').textContent=steelPlants;
+  document.getElementById('sPipe').innerHTML=Math.round(pipe)+'<small> Mt</small>';
+  document.getElementById('sH2').textContent=h2;
+  const scopeName=state.country!=="ALL"?state.country:(state.region!=="ALL"?rName(state.region):null);
+  document.getElementById('dashScope').textContent=scopeName?L.scopeR(scopeName,vis.length):L.scope(vis.length);
+  E('chRoute').setOption({tooltip:{trigger:'item',formatter:'{b}: {c} Mt ({d}%)'},legend:{bottom:0,itemWidth:9,itemHeight:9,textStyle:{fontSize:10}},
+    series:[{type:'pie',radius:['44%','68%'],center:['50%','44%'],avoidLabelOverlap:true,label:{show:true,formatter:'{d}%',fontSize:10,fontWeight:'bold'},
+      data:[{value:+sumBOF.toFixed(0),name:L.rtBOF,itemStyle:{color:'#C8362F'}},{value:+sumEAF.toFixed(0),name:L.rtEAF,itemStyle:{color:'#E0731B'}},{value:+sumIF.toFixed(0),name:L.rtIF,itemStyle:{color:'#C99A14'}}]}]},true);
+  // 区域：在产 + 在建/规划 堆叠
+  const byReg={},byRegP={}; DATA.forEach(p=>{ if(p.type==="mine")return;
+    if(p.status.startsWith("operating"))byReg[p.rg]=(byReg[p.rg]||0)+p.cap_op;
+    if(["construction","announced"].includes(p.status))byRegP[p.rg]=(byRegP[p.rg]||0)+p.cap_pipe; });
+  const regs=Object.entries(byReg).sort((a,b)=>a[1]-b[1]);
+  E('chRegion').setOption({grid:{left:4,right:46,top:16,bottom:2,containLabel:true},legend:{top:0,right:0,itemWidth:9,itemHeight:8,textStyle:{fontSize:8},data:[L.stOperating,L.stConstruction]},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:ps=>{let s=ps[0].axisValue+'<br>';ps.forEach(x=>{if(x.value)s+=x.marker+x.seriesName+': '+Math.round(x.value)+' Mt<br>';});return s;}},
+    xAxis:{type:'value',axisLabel:{fontSize:9}},yAxis:{type:'category',data:regs.map(r=>rName(r[0])),axisLabel:{fontSize:10}},
+    series:[{name:L.stOperating,type:'bar',stack:'x',data:regs.map(r=>+r[1].toFixed(0)),itemStyle:{color:'#1B6CA8'},barWidth:'62%'},
+            {name:L.stConstruction,type:'bar',stack:'x',data:regs.map(r=>+(byRegP[r[0]]||0).toFixed(0)),itemStyle:{color:'#E0731B'},label:{show:true,position:'right',fontSize:8,formatter:p=>{const t=(byReg[regs[p.dataIndex][0]]||0)+(byRegP[regs[p.dataIndex][0]]||0);return Math.round(t);}}}]},true);
+  const byC={},byCP={}; DATA.forEach(p=>{ if(p.type==="mine"||!(state.region==="ALL"||p.rg===state.region))return;
+    if(p.status.startsWith("operating")&&p.cap_op>0)byC[p.cy]=(byC[p.cy]||0)+p.cap_op;
+    if(["construction","announced"].includes(p.status))byCP[p.cy]=(byCP[p.cy]||0)+p.cap_pipe; });
+  const cs=Object.entries(byC).sort((a,b)=>b[1]-a[1]).slice(0,20).reverse();
+  E('chCountry').setOption({grid:{left:4,right:46,top:16,bottom:2,containLabel:true},legend:{top:0,right:0,itemWidth:9,itemHeight:8,textStyle:{fontSize:8},data:[L.stOperating,L.stConstruction]},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:ps=>{let s=ps[0].axisValue+'<br>';ps.forEach(x=>{if(x.value)s+=x.marker+x.seriesName+': '+Math.round(x.value)+' Mt<br>';});return s;}},
+    xAxis:{type:'value',axisLabel:{fontSize:9}},yAxis:{type:'category',data:cs.map(c=>c[0]),axisLabel:{fontSize:9}},
+    series:[{name:L.stOperating,type:'bar',stack:'x',data:cs.map(c=>({value:+c[1].toFixed(0),itemStyle:{color:c[0]===state.country?'#C8362F':'#1B6CA8'}})),barWidth:'64%'},
+            {name:L.stConstruction,type:'bar',stack:'x',data:cs.map(c=>+(byCP[c[0]]||0).toFixed(0)),itemStyle:{color:'#E0731B'}}]},true);
+  const cc=E('chCountry'); cc.off('click'); cc.on('click',pm=>{ if(pm.name)setCountry(pm.name); });
+  document.getElementById('covNote').innerHTML=L.covNote;
+  // 未来投产管线：按预计投产年份堆叠(在建+规划)
+  const NOWY=2026, pipeByYr={};
+  scopeData.filter(p=>p.type!=="mine"&&["construction","announced"].includes(p.status)&&p.cap_pipe>0).forEach(p=>{
+    let y=null; (p.phases||[]).forEach(x=>{ if(["construction","announced"].includes((x.st||'').trim())&&x.yr&&(!y||x.yr<y))y=x.yr; });
+    if(!y){const s=parseInt(p.start); y=(!isNaN(s)&&s>=NOWY)?s:NOWY+1;}
+    if(y<NOWY)y=NOWY; if(y>NOWY+8)y=NOWY+8;
+    pipeByYr[y]=(pipeByYr[y]||0)+p.cap_pipe; });
+  const pyrs=[];for(let y=NOWY;y<=NOWY+7;y++)pyrs.push(y);
+  E('chPipe').setOption({grid:{left:2,right:8,top:8,bottom:16,containLabel:true},
+    tooltip:{trigger:'axis',formatter:ps=>ps[0].axisValue+': +'+(ps[0].value||0)+' Mt'},
+    xAxis:{type:'category',data:pyrs,axisLabel:{fontSize:9}},yAxis:{type:'value',axisLabel:{fontSize:9}},
+    series:[{type:'bar',data:pyrs.map(y=>+(pipeByYr[y]||0).toFixed(1)),itemStyle:{color:'#E0731B',borderRadius:[3,3,0,0]},barWidth:'58%',label:{show:true,position:'top',fontSize:8,formatter:p=>p.value>0?p.value:''}}]},true);
+  const byDRI={}; DATA.filter(p=>p.status.startsWith("operating")&&p.dri>0).forEach(p=>{byDRI[p.rg]=(byDRI[p.rg]||0)+p.dri;});
+  const dris=Object.entries(byDRI).sort((a,b)=>b[1]-a[1]);
+  E('chDRI').setOption({tooltip:{trigger:'item',formatter:'{b}: {c} Mt ({d}%)'},legend:{type:'scroll',bottom:0,itemWidth:9,itemHeight:9,textStyle:{fontSize:9}},
+    series:[{type:'pie',radius:'62%',center:['50%','44%'],label:{fontSize:9,formatter:'{b}\n{d}%'},data:dris.map(d=>({value:+d[1].toFixed(0),name:rName(d[0])}))}]},true);
+  const dec={}; op.forEach(p=>{const y=parseInt(p.start);if(y>1900&&y<2030){const d=Math.floor(y/10)*10;dec[d]=(dec[d]||0)+p.cap_op;}});
+  const decs=Object.keys(dec).map(Number).sort((a,b)=>a-b); let cum=0; const cumv=decs.map(d=>{cum+=dec[d];return +cum.toFixed(0);});
+  E('chTrend').setOption({grid:{left:4,right:10,top:14,bottom:4,containLabel:true},tooltip:{trigger:'axis',formatter:p=>p[0].name+' : '+p[0].value+' Mt'},
+    xAxis:{type:'category',data:decs.map(d=>d+"s"),axisLabel:{fontSize:9}},yAxis:{type:'value',axisLabel:{fontSize:9}},
+    series:[{type:'line',data:cumv,smooth:true,areaStyle:{color:'rgba(27,108,168,.18)'},lineStyle:{color:'#1B6CA8',width:2},itemStyle:{color:'#1B6CA8'},symbolSize:4}]},true);
+}
+function setKPIs(){
+  const op=DATA.filter(p=>p.status.startsWith("operating"));
+  const crude=op.reduce((a,p)=>a+p.cap_op,0),eaf=op.reduce((a,p)=>a+p.eaf,0),bof=op.reduce((a,p)=>a+p.bof,0),iff=op.reduce((a,p)=>a+p.iff,0),dri=op.reduce((a,p)=>a+p.dri,0);
+  document.getElementById('kCap').textContent=Math.round(crude).toLocaleString();
+  document.getElementById('kPlants').textContent=op.filter(p=>p.cap_op>0).length;
+  document.getElementById('kEAF').textContent=Math.round(eaf/(eaf+bof+iff)*100)+'%';
+  document.getElementById('kDRI').textContent=Math.round(dri);
+}
+function setCounts(){const c={integrated:0,eaf:0,rolling:0,dri:0,bf_iron:0,mine:0}; DATA.forEach(p=>{const g=groupOf(p.type);if(c[g]!==undefined)c[g]++;}); for(const k in c){const el=document.getElementById('c-'+k); if(el)el.textContent=c[k];}}
+function buildRegions(){const rs=[...new Set(DATA.map(p=>p.rg))].filter(Boolean).sort(); const sel=document.getElementById('regionSel'); sel.innerHTML='';
+  const all=document.createElement('option'); all.value="ALL"; all.textContent=L_().allRegions; sel.appendChild(all);
+  rs.forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=rName(r);sel.appendChild(o);}); sel.value=state.region;}
+function buildCountries(){const cs=[...new Set(DATA.map(p=>p.cy))].filter(Boolean).sort(); const sel=document.getElementById('countrySel'); sel.innerHTML='';
+  const all=document.createElement('option'); all.value="ALL"; all.textContent=L_().allCountries; sel.appendChild(all);
+  cs.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);}); sel.value=state.country;}
+function zoomCountry(){ if(state.country!=="ALL"){const pts=DATA.filter(p=>p.cy===state.country&&p.lat); if(pts.length){const b=L.latLngBounds(pts.map(p=>[p.lat,p.lng]));map.fitBounds(b.pad(0.15));}} else map.setView([28,18],3); }
+function setCountry(cy){ state.country=(state.country===cy?"ALL":cy); document.getElementById('countrySel').value=state.country; zoomCountry(); render(); }
+function applyLang(){
+  const L=L_();
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const v=L[el.dataset.i18n]; if(typeof v==="string")el.innerHTML=v;});
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{const v=L[el.dataset.i18nPh]; if(v)el.placeholder=v;});
+  document.getElementById('legendBody').innerHTML=L.legendBody;
+  document.getElementById('disclaimer').textContent=L.disclaimer;
+  document.getElementById('obSteps').innerHTML=L.steps.map((s,i)=>'<div class="ob-step"><div class="ob-n">'+(i+1)+'</div><div class="tx"><b>'+s[0]+'</b><p>'+s[1]+'</p></div></div>').join("");
+  buildRegions(); buildCountries();
+  document.documentElement.lang=state.lang==="zh"?"zh-CN":"en";
+  document.getElementById('langZh').classList.toggle('on',state.lang==="zh");
+  document.getElementById('langEn').classList.toggle('on',state.lang==="en");
+  setCounts(); render();
+  if(typeof setBuiltTag==="function")setBuiltTag();
+  if(state.selected)paintPanel(state.selected);
+}
+function setLang(l){if(state.lang===l)return;state.lang=l;try{localStorage.setItem('gist_lang',l);}catch(e){}map.closePopup();applyLang();}
+(function pickLang(){let saved=null;try{saved=localStorage.getItem('gist_lang');}catch(e){}
+  if(saved==="zh"||saved==="en")state.lang=saved; else state.lang=(navigator.language||"").toLowerCase().startsWith("zh")?"zh":"en";})();
+
+document.getElementById('langZh').addEventListener('click',()=>setLang('zh'));
+document.getElementById('langEn').addEventListener('click',()=>setLang('en'));
+document.getElementById('backBtn').addEventListener('click',backToOverview);
+function isMobile(){return window.innerWidth<=980;}
+function togglePanel(sel,btn,openArrow,closeArrow){
+  if(isMobile()){ var cls=sel==='.rail'?'rail-open':'dash-open', other=sel==='.rail'?'dash-open':'rail-open';
+    document.body.classList.remove(other); document.body.classList.toggle(cls);
+    setTimeout(function(){map.invalidateSize();},260); return; }
+  const el=document.querySelector(sel); const off=el.classList.toggle('collapsed');
+  btn.textContent=off?openArrow:closeArrow;
+  setTimeout(()=>{map.invalidateSize(); for(const k in charts)charts[k].resize(); if(ppChart)ppChart.resize();},270);
+}
+document.getElementById('tglRail').addEventListener('click',e=>togglePanel('.rail',e.currentTarget,'›','‹'));
+document.getElementById('tglDash').addEventListener('click',e=>togglePanel('.dash',e.currentTarget,'‹','›'));
+document.getElementById('scrim').addEventListener('click',function(){document.body.classList.remove('rail-open','dash-open');});
+// ---- 导出 / 截图 / 分享 ----
+function toast(msg){var t=document.getElementById('newdata'),b=document.getElementById('newdataBtn');
+  document.getElementById('newdataTxt').textContent=msg; b.style.display='none'; t.style.display='flex';
+  setTimeout(function(){t.style.display='none'; b.style.display='';},1800);}
+function exportCSV(){
+  var vis=DATA.filter(visible);
+  var cols=['id','en','nm','type','cy','rg','muni','status','cap_op','cap_pipe','bof','eaf','iff','bf','dri','ore','owner','products','inv_usd'];
+  var esc=function(v){ if(v==null)v=''; v=String(v).replace(/"/g,'""'); return /[",\n]/.test(v)?'"'+v+'"':v; };
+  var csv='﻿'+cols.join(',')+'\n'+vis.map(function(p){return cols.map(function(c){return esc(p[c]);}).join(',');}).join('\n');
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='SMM_steel_map_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+}
+function exportPNG(){
+  if(typeof html2canvas!=='function'){toast(state.lang==='zh'?'截图组件加载中…':'Snapshot lib loading…');return;}
+  toast(state.lang==='zh'?'正在生成截图…':'Rendering…');
+  html2canvas(document.querySelector('.app'),{useCORS:true,backgroundColor:'#F6F2E9',scale:1.5,logging:false}).then(function(c){
+    var a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download='SMM_steel_map_'+new Date().toISOString().slice(0,10)+'.png'; a.click();
+  }).catch(function(e){toast(state.lang==='zh'?'截图失败':'Snapshot failed');});
+}
+function stateToQuery(){
+  var q=[]; function add(k,v){q.push(k+'='+encodeURIComponent(v));}
+  var onL=Object.keys(state.layers).filter(function(k){return state.layers[k];}); if(onL.length<6)add('layers',onL.join(','));
+  var onS=Object.keys(state.status).filter(function(k){return state.status[k];}); if(!(onS.length===1&&onS[0]==='operating'))add('status',onS.join(','));
+  if(state.pcats.size)add('pc',[].concat.apply([],[Array.from(state.pcats)]).join(','));
+  if(state.ow!=='all')add('ow',state.ow); if(state.green)add('green','1');
+  if(state.region!=='ALL')add('region',state.region); if(state.country!=='ALL')add('country',state.country);
+  if(state.capMin)add('cap',state.capMin); if(state.q)add('q',state.q); if(state.lang!=='zh')add('lang',state.lang);
+  return q.join('&');
+}
+function shareLink(){
+  var url=location.origin+location.pathname+(stateToQuery()?'?'+stateToQuery():'');
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(function(){toast(L_().tShareCopied);},function(){prompt('复制链接 / Copy link:',url);});}
+  else prompt('复制链接 / Copy link:',url);
+}
+function applyURLState(){
+  var p=new URLSearchParams(location.search); if(![...p.keys()].length)return;
+  if(p.get('lang'))state.lang=p.get('lang')==='en'?'en':'zh';
+  if(p.get('layers')!==null){var on=(p.get('layers')||'').split(',').filter(Boolean);Object.keys(state.layers).forEach(function(k){state.layers[k]=on.indexOf(k)>=0?1:0;});}
+  if(p.get('status')!==null){var s=(p.get('status')||'').split(',').filter(Boolean);state.status={};s.forEach(function(k){state.status[k]=1;});}
+  if(p.get('pc')){state.pcats=new Set((p.get('pc')||'').split(',').filter(Boolean));}
+  if(p.get('ow'))state.ow=p.get('ow'); if(p.get('green'))state.green=1;
+  if(p.get('region'))state.region=p.get('region'); if(p.get('country'))state.country=p.get('country');
+  if(p.get('cap'))state.capMin=+p.get('cap'); if(p.get('q'))state.q=p.get('q');
+}
+function syncControls(){
+  document.querySelectorAll('.layer').forEach(function(e){e.classList.toggle('off',!state.layers[e.dataset.type]);});
+  document.querySelectorAll('#statusChips .chip').forEach(function(e){e.classList.toggle('on',!!state.status[e.dataset.st]);});
+  document.querySelectorAll('#pcChips .chip').forEach(function(e){e.classList.toggle('on',state.pcats.has(e.dataset.pc));});
+  document.querySelectorAll('#owChips .chip').forEach(function(e){e.classList.toggle('on',e.dataset.ow===state.ow);});
+  document.querySelectorAll('#greenChips .chip').forEach(function(e){e.classList.toggle('on',!!state.green);});
+  var rs=document.getElementById('regionSel'); if(rs)rs.value=state.region;
+  var csl=document.getElementById('countrySel'); if(csl)csl.value=state.country;
+  var cm=document.getElementById('capMin'); if(cm){cm.value=state.capMin;document.getElementById('capMinV').textContent=state.capMin;}
+  var sb=document.getElementById('search'); if(sb)sb.value=state.q;
+}
+document.getElementById('btnCsv').addEventListener('click',exportCSV);
+document.getElementById('btnPng').addEventListener('click',exportPNG);
+document.getElementById('btnShare').addEventListener('click',shareLink);
+document.querySelectorAll('.layer').forEach(el=>el.addEventListener('click',()=>{const t=el.dataset.type;state.layers[t]=state.layers[t]?0:1;el.classList.toggle('off',!state.layers[t]);render();}));
+document.querySelectorAll('#statusChips .chip').forEach(el=>el.addEventListener('click',()=>{const s=el.dataset.st;state.status[s]=state.status[s]?0:1;el.classList.toggle('on',!!state.status[s]);render();}));
+document.querySelectorAll('#pcChips .chip').forEach(el=>el.addEventListener('click',()=>{const k=el.dataset.pc; if(state.pcats.has(k))state.pcats.delete(k); else state.pcats.add(k); el.classList.toggle('on',state.pcats.has(k)); render();}));
+document.querySelectorAll('#owChips .chip').forEach(el=>el.addEventListener('click',()=>{state.ow=el.dataset.ow; document.querySelectorAll('#owChips .chip').forEach(c=>c.classList.toggle('on',c.dataset.ow===state.ow)); render();}));
+document.querySelectorAll('#greenChips .chip').forEach(el=>el.addEventListener('click',()=>{state.green=state.green?0:1;el.classList.toggle('on',!!state.green);render();}));
+document.getElementById('regionSel').addEventListener('change',e=>{state.region=e.target.value;
+  if(state.region!=="ALL"){const pts=DATA.filter(p=>p.rg===state.region&&p.lat); if(pts.length){const b=L.latLngBounds(pts.map(p=>[p.lat,p.lng]));map.fitBounds(b.pad(0.1));}} else map.setView([28,18],3); render();});
+document.getElementById('countrySel').addEventListener('change',e=>{state.country=e.target.value; zoomCountry(); render();});
+document.getElementById('capMin').addEventListener('input',e=>{state.capMin=+e.target.value;document.getElementById('capMinV').textContent=e.target.value;render();});
+let qt; document.getElementById('search').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{state.q=e.target.value.trim();render();},220);});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  state.layers={integrated:1,eaf:1,rolling:1,dri:1,bf_iron:1}; state.status={operating:1}; state.pcats=new Set(); state.ow="all"; state.green=0; state.region="ALL"; state.country="ALL"; state.capMin=0; state.q="";
+  document.querySelectorAll('.layer').forEach(e=>e.classList.remove('off'));
+  document.querySelectorAll('#statusChips .chip').forEach(e=>e.classList.toggle('on',e.dataset.st==="operating"));
+  document.querySelectorAll('#pcChips .chip').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('#owChips .chip').forEach(e=>e.classList.toggle('on',e.dataset.ow==="all"));
+  document.querySelectorAll('#greenChips .chip').forEach(e=>e.classList.remove('on'));
+  document.getElementById('search').value=""; document.getElementById('capMin').value=0; document.getElementById('capMinV').textContent="0"; document.getElementById('regionSel').value="ALL"; document.getElementById('countrySel').value="ALL";
+  map.setView([28,18],3); render();});
+window.addEventListener('resize',()=>{for(const k in charts)charts[k].resize(); if(ppChart)ppChart.resize();});
+function showOnboard(){document.getElementById('obMask').style.display='flex';}
+function hideOnboard(){document.getElementById('obMask').style.display='none';}
+(function initOnboard(){let seen=false;try{seen=localStorage.getItem('gist_ob')==='1';}catch(e){} if(!seen)showOnboard();
+  document.getElementById('obSkip').addEventListener('change',e=>{try{localStorage.setItem('gist_ob',e.target.checked?'1':'0');}catch(e){}});})();
+function boot(){ applyURLState(); setKPIs(); applyLang(); syncControls(); setBuiltTag();
+  if(state.region!=="ALL"){var pts=DATA.filter(function(p){return p.rg===state.region&&p.lat;});if(pts.length){try{map.fitBounds(L.latLngBounds(pts.map(function(p){return [p.lat,p.lng];})).pad(0.1));}catch(e){}}}
+}
+function setBuiltTag(){ var el=document.getElementById('builtTag'); if(!el||!BUILT||BUILT.indexOf("__")===0)return;
+  el.textContent=(state.lang==="zh"?"数据更新 ":"Updated ")+BUILT.slice(0,16).replace("T"," ")+" UTC"; }
+// ---- 版本监测：托管版每5分钟查一次 version.txt，发现新数据即提示同事刷新（无需手动） ----
+function startVersionWatch(){
+  setInterval(function(){
+    fetch('version.txt?t='+Date.now()).then(function(r){return r.ok?r.text():null;}).then(function(v){
+      if(v && v.trim() && v.trim()!==BUILT){
+        var t=document.getElementById('newdata'); var z=state.lang==="zh";
+        document.getElementById('newdataTxt').textContent=z?"📡 数据已更新":"📡 New data available";
+        document.getElementById('newdataBtn').textContent=z?"刷新":"Refresh";
+        t.style.display="flex";
+      }
+    }).catch(function(){});
+  }, 300000);
+}
+// ---- data loading: hosted mode fetches plants.json (live auto-update); offline mode uses embedded DATA ----
+function loadData(){
+  if(DATA==="__FETCH__"){
+    fetch('plants.json?t='+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json();})
+      .then(function(d){DATA=d; boot(); startVersionWatch();})
+      .catch(function(){document.getElementById('map').innerHTML='<div style="padding:40px;font-family:sans-serif;color:#0E2440">数据加载失败 / Failed to load plants.json。请确认它与本页面在同一目录，并通过 http(s) 访问（不能用本地 file:// 直接打开托管版）。</div>';});
+  } else { boot(); }
+}
+(function gateThen(){
+  if(GATE){ var m=document.getElementById('gateMask'); var ok=false;
+    try{ok=localStorage.getItem('gist_gate')===GATE;}catch(e){}
+    if(ok){ loadData(); }
+    else { m.style.display='flex';
+      var go=function(){ if(document.getElementById('gateInput').value===GATE){ try{localStorage.setItem('gist_gate',GATE);}catch(e){} m.style.display='none'; loadData(); } else { document.getElementById('gateErr').style.display='block'; } };
+      document.getElementById('gateBtn').onclick=go;
+      document.getElementById('gateInput').addEventListener('keydown',function(e){if(e.key==='Enter')go();});
+    }
+  } else { loadData(); }
+})();
+</script>
+</body>
+</html>
